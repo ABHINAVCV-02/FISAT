@@ -1,0 +1,83 @@
+ #define colorBtn 6
+#define durationBtn 7
+#define redPin 13
+#define greenPin 12
+#define bluePin 11
+
+bool colors[][3] = {
+  {1,1,1}, {1,0,0}, {0,1,0}, {0,0,1},  // white, red, green, blue
+  {0,1,1}, {1,1,0}, {1,0,1}            // cyan, yellow, magenta
+};
+char* colorNames[] = {
+  "white", "red", "green", "blue",
+  "cyan", "yellow", "magenta"
+};
+int delays[] = {
+  1000, 800, 600, 400, 200
+};
+
+volatile int colorIndex = 0;
+volatile int durationIndex = 0;
+
+unsigned long previousMillis = 0;
+bool ledState = LOW;
+
+void setup() {
+  pinMode(colorBtn, INPUT_PULLUP);
+  pinMode(durationBtn, INPUT_PULLUP);
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+
+  attachInterrupt(digitalPinToInterrupt(colorBtn), changeColor, FALLING);
+  attachInterrupt(digitalPinToInterrupt(durationBtn), changeDuration, FALLING);
+
+  Serial.begin(9600);
+  Serial.println("Starting...");
+  printStatus();
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= delays[durationIndex]) {
+    previousMillis = currentMillis;
+
+    ledState = !ledState;
+    setColor(ledState ? colorIndex : 6); // Turn off (black) on toggle
+  }
+}
+
+void setColor(int index) {
+  digitalWrite(redPin, colors[index][0]);
+  digitalWrite(greenPin, colors[index][1]);
+  digitalWrite(bluePin, colors[index][2]);
+}
+
+void changeColor() {
+  static unsigned long lastPressTime = 0;
+  unsigned long currentTime = millis();
+  if (currentTime - lastPressTime > 200) { // Debounce time of 200ms
+    colorIndex = (colorIndex + 1) % 7;
+    printStatus();
+    lastPressTime = currentTime;
+  }
+}
+
+void changeDuration() {
+  static unsigned long lastPressTime = 0;
+  unsigned long currentTime = millis();
+  if (currentTime - lastPressTime > 200) { // Debounce time of 200ms
+    durationIndex = (durationIndex + 1) % 5;
+    printStatus();
+    lastPressTime = currentTime;
+  }
+}
+
+void printStatus() {
+  Serial.print("Color: ");
+  Serial.println(colorNames[colorIndex]);
+  Serial.print("Duration: ");
+  Serial.print(delays[durationIndex]);
+  Serial.println(" ms");
+}
